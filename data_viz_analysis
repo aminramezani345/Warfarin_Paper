@@ -1,0 +1,765 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May  1 21:54:05 2024
+
+@author: Mandana Ghafourian
+"""
+
+import pandas as pd
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+from collections import Counter
+import numpy as np
+
+df = pd.read_csv('H:/ramezani_usa_project/IWPC dataset.csv')
+
+#the age range of 40-75 years who have diabetes 
+#and are currently on statin medication.
+#additional conditions such as AF, DVT, or PTE, the prescription of warfarin is necessary. 
+#we determine the dose of warfarin in such a way that the INR of the people is within
+#the INR target range,the warfarin dose recommended
+#the therapeutic INR levels, ensuring their proximity to the INR target.
+#So we need the following columns:
+#1.Age (I)
+#2.Diabetes (N)
+#3.Statins use (U-AA)
+#4.Indication for Warfarin Treatment
+#5.Target INR (AJ)
+#6.INR on therapeutic dose (AN)
+#7.Therapeutic dose of warfarin (AM)
+### Create dataset with specific Indication for Warfarin Treatment and conditions as columns.
+
+
+df_age=df['Age']                    #1.Age (I)
+df_Diabetes=df['Diabetes']          #2.Diabetes (N)
+df_Simvastatin = df['Simvastatin (Zocor)'] #3.Statins use U
+df_Atorvastatin = df['Atorvastatin (Lipitor)'] #3.Statins use v
+df_Fluvastatin = df['Fluvastatin (Lescol)'] #3.Statins use w
+df_Lovastatin = df['Lovastatin (Mevacor)'] #3.Statins use x
+df_Pravastatin = df['Pravastatin (Pravachol)'] #3.Statins use y
+df_Rosuvastatin = df['Rosuvastatin (Crestor)'] #3.Statins use z
+df_Cerivastatin = df['Cerivastatin (Baycol)'] #3.Statins use AA
+df_Indication=df['Indication for Warfarin Treatment'] #4.Comorbidities such as AF, DVT, or PTE (M)
+df_targetINR = df['Target INR']     #5.Target INR (AJ)
+df_TherapeuticINR = df['INR on Reported Therapeutic Dose of Warfarin'] #6.INR on therapeutic dose (AN)
+y = df['Therapeutic Dose of Warfarin']   #7.Therapeutic dose of warfarin (AM)
+
+
+df_used = pd.concat([y,df_Diabetes,df_Simvastatin,df_Atorvastatin,df_Fluvastatin,df_Lovastatin,df_Pravastatin,
+                     df_Rosuvastatin,df_Cerivastatin,df_Indication,df_targetINR,df_TherapeuticINR], axis=1)
+
+#########################################################
+# Select  Data : Diabetes 
+delete_rows_Diabetes = []
+non_Diabetes_people = []
+Diabetes_people = ['1']
+R = df_used['Diabetes']
+for row_index in range(len(R)):
+    if pd.isnull(R.iloc[row_index]):
+        non_Diabetes_people.append(row_index)
+    elif any(diab in str(R.iloc[row_index]) for diab in Diabetes_people):
+        delete_rows_Diabetes.append(row_index)
+    else:
+        non_Diabetes_people.append(row_index)
+R.drop(non_Diabetes_people,inplace=True)
+R_cleaned = R.dropna()
+#df_used.drop(non_Diabetes_people, inplace=True)
+###############################################################
+#receive statins
+s1 = [df_used['Simvastatin (Zocor)'], df_used['Atorvastatin (Lipitor)'], df_used['Fluvastatin (Lescol)'],
+      df_used['Lovastatin (Mevacor)'], df_used['Pravastatin (Pravachol)'], df_used['Rosuvastatin (Crestor)'],
+      df_used['Cerivastatin (Baycol)']]
+
+rows_with_one = set()  # Store the row indices that contain '1'
+
+for col in s1:
+    for row_index, value in col.items():
+        if '1' in str(value) and row_index  not in rows_with_one:
+            rows_with_one.add(row_index)
+
+
+# Get the row indices where none of the columns have the value '1'
+total_rows = set(df_used.index)
+rows_without_one = total_rows - rows_with_one
+
+r1=list(rows_without_one)
+
+r2=list(rows_with_one)
+
+delete_rows = list(set(r1+non_Diabetes_people))
+
+
+cr = pd.concat([df_Diabetes,df_used['Simvastatin (Zocor)'], df_used['Atorvastatin (Lipitor)'], df_used['Fluvastatin (Lescol)'],
+      df_used['Lovastatin (Mevacor)'], df_used['Pravastatin (Pravachol)'], df_used['Rosuvastatin (Crestor)'],df_Indication], axis=1)
+cr.drop(delete_rows, inplace=True)
+cr_cleaned = cr.dropna()
+
+###################################################################################
+
+
+total_r= set(df.index)
+total_cr_cleaned= set(cr_cleaned.index)
+
+rows_df= total_r - total_cr_cleaned
+
+r1=list(rows_without_one)
+
+df.drop(rows_df, inplace=True)
+#df= df.dropna()
+
+df_used.drop(rows_df, inplace=True)
+
+
+
+# IWPC_all_indication_non_diab_statin=df_used
+
+# IWPC_all_indication_non_diab_statin.to_csv('IWPC_all_indication_non_diab_statin.csv')
+
+
+# #################################################################################
+
+# # # Assuming 'Indication for Warfarin Treatment' is the column name
+
+# count_number_one = df_used['Indication for Warfarin Treatment'].str.contains(r'\b1\b').sum()
+
+# print("Number of occurrences of the number 1 in the 'Warfarin' column:", count_number_one)
+
+
+# s2 = [df_used['Indication for Warfarin Treatment']]
+
+# rows_with_Indication= set()  # Store the row indices that contain '1'
+
+# for col in s2:
+#     for row_indexx, value in col.items():
+#         if '0' in str(value) or '1' in str(value) or '2' in str(value) or '3' in str(value) and row_indexx not in rows_with_Indication:
+#             rows_with_Indication.add(row_indexx)    
+    
+# total_rows = set(df_used.index)
+# rows_without_Indication = total_rows - rows_with_Indication    
+    
+# r2=list(rows_without_Indication)
+
+# delete_rowss = list(set(r1+r2+delete_rows_Diabetes))
+
+#################################################################################
+
+df_n=df.copy()
+#df_n.drop(delete_rows, inplace=True)
+
+
+# Calculate the percentage of each gender category
+gender_counts = df_n['Gender'].value_counts(normalize=True) * 100
+
+# Print the percentage of each gender category
+print("Percentage of male:", gender_counts.get('male', 0), "%")
+print("Percentage of female:", gender_counts.get('female', 0), "%")
+
+gender_countss = df_n['Gender'].value_counts()
+
+print("Number of male individuals:", gender_countss.get('male', 0))
+print("Number of female individuals:", gender_countss.get('female', 0))
+
+
+#####################################################################
+
+# Calculate the percentage of Race
+Race_counts = df_n['Race (Reported)'].value_counts(normalize=True) * 100
+ 
+# Print the percentage of each gender category
+print("Percentage of White:", Race_counts.get('White', 0), "%")
+print("Percentage of Black:", Race_counts.get('Black', 0), "%")
+
+
+Race_countss = df_n['Race (Reported)'].value_counts()
+
+print("Number of male individuals:", Race_countss.get('White', 0))
+print("Number of female individuals:", Race_countss.get('Black', 0))
+
+####################################################################
+
+# Define a function to convert age ranges to numerical values
+def get_age_range(age_range):
+    lower, upper = map(int, age_range.split('-'))
+    return (lower + upper) / 2
+
+# Convert age ranges to numerical values
+df_n['age_numeric'] = df_n['Age'].apply(get_age_range)
+
+
+# Calculate the percentage of each gender category
+total_count = len(df_n)
+under_40_count = len(df_n[df_n['age_numeric'] < 40])
+between_40_75_count = len(df_n[(df_n['age_numeric'] >= 40) & (df_n['age_numeric'] <= 75)])
+over_75_count = len(df_n[df_n['age_numeric'] > 75])
+
+print(under_40_count)
+print(between_40_75_count)
+print(over_75_count)
+
+
+under_40_percent = (under_40_count / total_count) * 100
+between_40_75_count = (between_40_75_count / total_count) * 100
+over_75_count = (over_75_count / total_count) * 100
+
+# Print the percentage of individuals in different age groups
+print("Percentage of people under 40 years old:", under_40_percent, "%")
+print("Percentage of people between 40 and 75 years old:", between_40_75_count, "%")
+print("Percentage of people over 75 years old:", over_75_count, "%")
+
+
+# Group by age groups and calculate mean and standard deviation
+grouped = df_n.groupby(pd.cut(df_n['age_numeric'], bins=[0, 40, 75, np.inf], labels=['Under 40', '40-75', 'Over 75']))
+group_stats = grouped['age_numeric'].agg(['mean', 'std'])
+
+# Print mean and standard deviation of each age group
+print("Mean and Standard Deviation of each age group:")
+print(group_stats)
+
+#####################################################################################
+
+# Calculate the percentage of Ethnicity
+Ethnicity_counts = df_n['Ethnicity (Reported)'].value_counts(normalize=True) * 100
+ 
+# Print the percentage of each gender category
+print("Percentage of Hispanic:", Ethnicity_counts.get('Hispanic', 0), "%")
+
+
+######################################################################################
+# Calculate the percentage of INR
+INR_counts = df_n['INR on Reported Therapeutic Dose of Warfarin'].value_counts(normalize=True) * 100
+
+# Print the percentage of each gender category
+print("Percentage of White:", Race_counts.get('White', 0), "%")
+print("Percentage of Black:", Race_counts.get('Black', 0), "%")
+
+
+####################################################################################
+
+# Calculate the percentage of INR on Reported Therapeutic Dose of Warfarin
+INR_counts = df_n['INR on Reported Therapeutic Dose of Warfarin'].value_counts(normalize=True) * 100
+
+total_count = len(df_n)
+between_2_3_count = len(df_n[(df_n['INR on Reported Therapeutic Dose of Warfarin'] >= 2) & (df_n['INR on Reported Therapeutic Dose of Warfarin'] <= 3)])
+
+print(between_2_3_count)
+print(total_count)
+
+between_2_3_percent = (between_2_3_count / total_count) * 100
+
+print("Percentage of people between 2 and 3 INR:", between_2_3_percent, "%")
+
+# Calculate the mean and standard deviation of the 'INR on Reported Therapeutic Dose of Warfarin' column
+mean_INR = df_n['INR on Reported Therapeutic Dose of Warfarin'].mean()
+std_INR = df_n['INR on Reported Therapeutic Dose of Warfarin'].std()
+
+print("Mean INR:", mean_INR)
+print("Standard Deviation INR:", std_INR)
+
+####################################################################################
+
+# Calculate the mean and standard deviation of the 'Height (cm)' column
+mean_Height= df_n['Height (cm)'].mean()
+std_Height = df_n['Height (cm)'].std()
+
+print("mean_Height:", mean_Height)
+print("Standard Deviation Height:", std_Height)
+###############################################################################
+
+# Calculate the mean and standard deviation of the 'Weight (kg)' column
+mean_Weight= df_n['Weight (kg)'].mean()
+std_Weight = df_n['Weight (kg)'].std()
+
+print("mean_Weight (kg):", mean_Weight)
+print("Standard Deviation Weight (kg):", std_Weight)
+
+#############################################################################
+
+Race_OMB_counts = df_n['Race (OMB)'].value_counts(normalize=True) * 100
+ 
+# Print the percentage of each gender category
+print("Percentage of White:", Race_OMB_counts.get('White', 0), "%")
+print("Percentage of Black:", Race_OMB_counts.get('Black', 0), "%")
+
+#############################################################################
+# Calculate the mean and standard deviation of the 'Therapeutic Dose of Warfarin' column
+
+# Calculate the mean and standard deviation of the 'Warfarin' column
+mean_warfarin= df_n['Therapeutic Dose of Warfarin'].mean()
+std_warfarin = df_n['Therapeutic Dose of Warfarin'].std()
+
+print("mean_warfarin :", mean_warfarin)
+print("Standard Deviation warfarin :", std_warfarin)
+
+############################################################################
+# # Calculate the mean and standard deviation of the Target INR
+mean_Target_INR= df_n['Target INR'].mean()
+std_Target_INR=df_n['Target INR'].std()
+
+print("mean Target_INR:", mean_Target_INR)
+print("Standard Deviation Target_INR:", std_Target_INR)
+
+############################################################################
+# statins 
+#Percentage of Simvastatin
+total_count = len(df_n)
+one_count = len(df_n[(df_n['Simvastatin (Zocor)'] == 1)])
+zero_count=len(df_n[(df_n['Simvastatin (Zocor)'] == 0)])
+print('Simvastatin is 1',one_count)
+print('Simvastatin is 0',zero_count)
+
+Simvastatin_percent = (one_count / total_count) * 100
+print("Percentage of Simvastatin:", Simvastatin_percent, "%")
+
+####################
+#Percentage of Atorvastatin 
+total_count = len(df_n)
+one_Atorvastatin_count = len(df_n[(df_n['Atorvastatin (Lipitor)'] == 1)])
+zero_Atorvastatin_count=len(df_n[(df_n['Atorvastatin (Lipitor)'] == 0)])
+print('Atorvastatin (Lipitor) is 1',one_Atorvastatin_count)
+print('Atorvastatin (Lipitor) is 0',zero_Atorvastatin_count)
+Atorvastatin_percent = (one_Atorvastatin_count / total_count) * 100
+print("Percentage of Atorvastatin:", Atorvastatin_percent, "%")
+
+#######################
+#Percentage of Fluvastatin 
+
+total_count = len(df_n)
+one_Fluvastatin_count = len(df_n[(df_n['Fluvastatin (Lescol)'] == 1)])
+zero_Fluvastatin_count=len(df_n[(df_n['Fluvastatin (Lescol)'] == 0)])
+print('Fluvastatin (Lescol) is 1',one_Fluvastatin_count)
+print('Fluvastatin (Lescol) is 0',zero_Fluvastatin_count)
+Fluvastatin_count_percent = (one_Fluvastatin_count / total_count) * 100
+print("Percentage of Fluvastatin:", Fluvastatin_count_percent, "%")
+
+
+#######################
+#Percentage of Lovastatin 
+
+total_count = len(df_n)
+one_Lovastatin_count = len(df_n[(df_n['Lovastatin (Mevacor)'] == 1)])
+zero_Lovastatin_count=len(df_n[(df_n['Lovastatin (Mevacor)'] == 0)])
+print('Lovastatin (Mevacor) is 1',one_Lovastatin_count)
+print('Lovastatin (Mevacor) is 0',zero_Lovastatin_count)
+Lovastatin_count_percent = (one_Lovastatin_count / total_count) * 100
+print("Percentage of Lovastatin :", Lovastatin_count_percent, "%")
+
+#######################
+#Percentage of Pravastatin 
+
+total_count = len(df_n)
+one_Pravastatin_count = len(df_n[(df_n['Pravastatin (Pravachol)'] == 1)])
+zero_Pravastatin_count=len(df_n[(df_n['Pravastatin (Pravachol)'] == 0)])
+print('Pravastatin (Pravachol)is 1',one_Pravastatin_count)
+print('Pravastatin (Pravachol) is 0',zero_Pravastatin_count)
+Pravastatin_count_percent = (one_Pravastatin_count / total_count) * 100
+print("Percentage of Pravastatin (Pravachol) :", Pravastatin_count_percent, "%")
+#######################
+#Percentage of Rosuvastatin 
+
+total_count = len(df_n)
+one_Rosuvastatin_count = len(df_n[(df_n['Rosuvastatin (Crestor)'] == 1)])
+zero_Rosuvastatin_count=len(df_n[(df_n['Rosuvastatin (Crestor)'] == 0)])
+print('Rosuvastatin (Crestor)is 1',one_Rosuvastatin_count)
+print('Rosuvastatin (Crestor) is 0',zero_Rosuvastatin_count)
+Rosuvastatin_count_percent = (one_Rosuvastatin_count / total_count) * 100
+print("Percentage of Rosuvastatin (Crestor) :", Rosuvastatin_count_percent, "%")
+#######################
+#Percentage of Cerivastatin 
+
+total_count = len(df_n)
+one_Cerivastatin_count = len(df_n[(df_n['Cerivastatin (Baycol)'] == 1)])
+zero_Cerivastatin_count=len(df_n[(df_n['Cerivastatin (Baycol)'] == 0)])
+print('Cerivastatin (Baycol)is 1',one_Cerivastatin_count)
+print('Cerivastatin (Baycol) is 0',zero_Cerivastatin_count)
+Cerivastatin_count_percent = (one_Cerivastatin_count / total_count) * 100
+print("Percentage of Cerivastatin (Baycol) :", Cerivastatin_count_percent, "%")
+#################################################################################
+
+total_count = len(df_n)
+# Count the occurrences of the number 1 within values that may contain multiple numbers
+count_number_one = df_n['Indication for Warfarin Treatment'].str.contains(r'\b5\b').sum()
+
+print("Number of occurrences of the number 1 in the 'Indication for Warfarin Treatment' column:", count_number_one)
+
+Indication_Warfarin_count_percent = (count_number_one / total_count) * 100
+
+print("Percentage of Indication for Warfarin Treatment :", Indication_Warfarin_count_percent, "%")
+
+
+# df_used.drop(delete_rows, inplace=True)
+# df_used_cleaned = df_used.dropna()
+# df.drop(delete_rowss, inplace=True)
+
+# df_cleaned = df.dropna()
+# IWPC_indication_diab_statin=df_used_cleaned
+
+# IWPC_indication_diab_statin.to_csv('IWPC_indication_diab_statin.csv')
+
+    
+#################################################
+# Using different regressions
+df_new=df_used.copy()
+
+from sklearn.model_selection import train_test_split
+
+x = df_new.drop(['Therapeutic Dose of Warfarin','INR on Reported Therapeutic Dose of Warfarin','Target INR','Indication for Warfarin Treatment','Cerivastatin (Baycol)'],axis=1)
+
+y = df_new['Therapeutic Dose of Warfarin']
+y1=  df_new[ 'INR on Reported Therapeutic Dose of Warfarin']
+
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+
+################################################################################################
+# SVR
+import sklearn
+from sklearn.tree import DecisionTreeRegressor
+import matplotlib.pyplot as plt
+from sklearn.metrics import mean_squared_error,mean_absolute_error
+from sklearn.metrics import accuracy_score , recall_score,f1_score, precision_score, roc_auc_score,confusion_matrix
+from sklearn.svm import SVR, SVC
+from sklearn.linear_model import Lasso
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
+clf_svr = SVR(kernel='rbf', degree=3, gamma='scale', coef0=0.0, tol=0.001, C=1.0, epsilon=0.1, shrinking=True, cache_size=200, verbose=False, max_iter=-1)
+clf_svr.fit(x_train,y_train)
+y_pred_svr = clf_svr.predict(x_test)
+score_svr = clf_svr.score(x_test, y_test)
+print("R-squared_svr:", score_svr)
+print("MSE_svr:", mean_squared_error(y_test, y_pred_svr))
+# Calculate Mean Absolute Error (MAE)
+mae_svr = mean_absolute_error(y_test, y_pred_svr)
+print("Mean Absolute Error (MAE_svr):", mae_svr)
+def mean_absolute_percentage_error(y_true, y_pred_svr):
+    return np.mean(np.abs((y_true - y_pred_svr) / y_true)) * 100
+# Calculate Mean Absolute Percentage Error (MAPE)
+mape_svr= mean_absolute_percentage_error(y_test, y_pred_svr)
+print("Mean Absolute Percentage Error (MAPE_svr):", mape_svr)
+#Calculate the correlation between y_true and y_pred
+correlation_svr = np.corrcoef(y_test, y_pred_svr)[0, 1]
+print("Correlation between y_true and y_pred_svr:", correlation_svr)
+
+
+######################################################################################################
+# KNN
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import mean_squared_error
+
+
+# Create a KNN regression model
+knn = KNeighborsRegressor(n_neighbors=3)  
+# Fit the model on the training data
+knn.fit(x_train, y_train)
+# Make predictions on the test data
+y_pred_knn = knn.predict(x_test)
+# Calculate mean squared error to evaluate the model
+mse_knn = mean_squared_error(y_test, y_pred_knn)
+print("Mean Squared Error_knn:", mse_knn)
+
+from sklearn.metrics import mean_squared_error, r2_score
+# Calculate Mean Absolute Error (MAE)
+mae_knn = mean_absolute_error(y_test, y_pred_knn)
+print("Mean Absolute Error (MAE_knn):", mae_knn)
+
+def mean_absolute_percentage_error(y_true, y_pred_knn):
+    return np.mean(np.abs((y_true - y_pred_knn) / y_true)) * 100
+
+# Calculate Mean Absolute Percentage Error (MAPE)
+mape_knn = mean_absolute_percentage_error(y_test, y_pred_knn)
+
+print("Mean Absolute Percentage Error (MAPE_knn):", mape_knn)
+# Calculate R-squared
+r_squared_knn = r2_score(y_test, y_pred_knn)
+
+print("R-squared:", r_squared_knn)
+
+correlation_knn = np.corrcoef(y_test, y_pred_knn)[0, 1]
+print("Correlation between y_true and y_pred_knn:", correlation_knn)
+
+#######################################################
+# LinearRegression
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+
+# Create a Linear Regression model
+lin_reg = LinearRegression()
+
+# Fit the model on the training data
+lin_reg.fit(x_train, y_train)
+
+# Make predictions on the test data
+y_pred_Lreg = lin_reg.predict(x_test)
+
+# Calculate Mean Squared Error (MSE)
+mse_Lreg = mean_squared_error(y_test, y_pred_Lreg)
+
+print("Mean Squared Error (MSE_Lreg):", mse_Lreg)
+# Calculate Mean Absolute Error (MAE)
+mae_Lreg = mean_absolute_error(y_test, y_pred_Lreg)
+print("Mean Absolute Error (MAE_Lreg):", mae_Lreg)
+
+def mean_absolute_percentage_error(y_true, y_pred_Lreg):
+    return np.mean(np.abs((y_true - y_pred_Lreg) / y_true)) * 100
+
+# Calculate Mean Absolute Percentage Error (MAPE)
+mape_Lreg = mean_absolute_percentage_error(y_test, y_pred_Lreg)
+print("Mean Absolute Percentage Error (MAPE_Lreg):", mape_Lreg)
+# Calculate R-squared
+r_squared_Lreg = r2_score(y_test, y_pred_Lreg)
+print("R-squared:", r_squared_Lreg)
+correlation_Lreg = np.corrcoef(y_test, y_pred_Lreg)[0, 1]
+print("Correlation between y_true and y_pred_Lreg:", correlation_Lreg)
+
+############################################################
+# DecisionTreeRegressor
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.metrics import mean_squared_error, r2_score
+
+
+# Create a Decision Tree Regression model
+dt_regressor = DecisionTreeRegressor()
+
+# Fit the model on the training data
+dt_regressor.fit(x_train, y_train)
+
+# Make predictions on the test data
+y_pred_DTree = dt_regressor.predict(x_test)
+
+# Calculate Mean Squared Error (MSE)
+mse_DTree  = mean_squared_error(y_test, y_pred_DTree)
+
+# Calculate R-squared
+r_squared_DTree  = r2_score(y_test, y_pred_DTree)
+
+print("Mean Squared Error (MSE_DTree):", mse_DTree )
+print("R-squared:", r_squared_DTree )
+# Calculate Mean Absolute Error (MAE)
+mae_DTree  = mean_absolute_error(y_test, y_pred_DTree)
+print("Mean Absolute Error (MAE_DTree):", mae_DTree )
+
+def mean_absolute_percentage_error(y_true, y_pred_DTree):
+    return np.mean(np.abs((y_true - y_pred_DTree) / y_true)) * 100
+
+# Calculate Mean Absolute Percentage Error (MAPE)
+mape_DTree  = mean_absolute_percentage_error(y_test, y_pred_DTree)
+print("Mean Absolute Percentage Error (mape_DTree):", mape_DTree )
+correlation_DTree  = np.corrcoef(y_test, y_pred_DTree)[0, 1]
+print("Correlation between y_true and y_pred_DTree:", correlation_DTree )
+############################################################################################
+# RandomForestRegressor
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+from sklearn.tree import export_graphviz
+#import graphviz
+import matplotlib.pyplot as plt
+random_grid = {
+    'n_estimators': [200, 400, 800],
+    'max_depth': [3, 6, 9, 12],
+    'min_samples_split': [2, 3, 4, 5],
+    'min_samples_leaf': [1, 2, 3, 4],
+    'bootstrap': [True, False]
+}
+
+Rs = 100
+model3 = RandomizedSearchCV(RandomForestRegressor(random_state=Rs), random_grid, random_state=Rs, n_iter=50, n_jobs=-1)
+model3.fit(x_train, y_train)
+
+print("Hyperparameters:", model3.best_params_)
+
+pred3 = model3.predict(x_test)
+
+mse_RandomForest = mean_squared_error(y_test, pred3)
+print("Mean Squared Error (MSE_RandomForest ):", mse_RandomForest)
+
+tree = model3.best_estimator_
+
+#export_graphviz(tree.estimators_[0], out_file='tree.dot', feature_names=x_train.columns, filled=True)
+r_squared_RandomForest = r2_score(y_test, pred3)
+print("R-squared_RandomForest :", r_squared_RandomForest)
+
+from sklearn.metrics import mean_squared_error,mean_absolute_error
+
+# Calculate Mean Absolute Error (MAE)
+mae_RandomForest = mean_absolute_error(y_test, pred3)
+print("Mean Absolute Error (MAE_RandomForest ):", mae_RandomForest)
+
+def mean_absolute_percentage_error(y_true, pred3):
+    return np.mean(np.abs((y_true - pred3) / y_true)) * 100
+
+# # Calculate Mean Absolute Percentage Error (MAPE)
+mape_RandomForest = mean_absolute_percentage_error(y_test, pred3)
+
+print("Mean Absolute Percentage Error (MAPE_RandomForest ):", mape_RandomForest)
+
+#############################################################
+# lasso
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import Lasso
+from sklearn.metrics import mean_squared_error, r2_score
+
+
+# Create a Lasso Regression model
+lasso_reg = Lasso(alpha=0.1)  # You can adjust the regularization parameter alpha
+
+# Fit the model on the training data
+lasso_reg.fit(x_train, y_train)
+
+# Make predictions on the test data
+y_pred_lasso = lasso_reg.predict(x_test)
+
+# Calculate Mean Squared Error (MSE)
+mse_lasso = mean_squared_error(y_test, y_pred_lasso)
+
+# Calculate R-squared
+r_squared_lasso = r2_score(y_test, y_pred_lasso)
+
+print("Mean Squared Error (MSE_lasso):", mse_lasso)
+print("R-squared_lasso:", r_squared_lasso)
+
+correlation_lasso = np.corrcoef(y_test, y_pred_lasso)[0, 1]
+
+print("Correlation between y_true and y_pred_lasso:", correlation_lasso)
+
+
+# Calculate Mean Absolute Error (MAE)
+mae_lasso = mean_absolute_error(y_test, y_pred_lasso)
+print("Mean Absolute Error (MAE_lasso):", mae_lasso)
+
+def mean_absolute_percentage_error(y_true, y_pred_lasso):
+    return np.mean(np.abs((y_true - y_pred_lasso) / y_true)) * 100
+
+# Calculate Mean Absolute Percentage Error (MAPE)
+mape_lasso = mean_absolute_percentage_error(y_test, y_pred_lasso)
+
+print("Mean Absolute Percentage Error (MAPE_lasso):", mape_lasso)
+
+################
+# figure 1
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Diabetic patients
+labels = ['INR on Reported Therapeutic','Warfarin dose, mg/week','Target INR']
+means_diabetic = [2.48 , 38.73 ,2.54]
+std_devs_diabetic = [0.33,15.37,0.14 ]
+
+# Non-diabetic patients
+means_non_diabetic = [2.41 , 33.99 ,2.51]
+std_devs_non_diabetic = [0.41,17.42,0.06 ]
+
+x = np.arange(len(labels))
+width = 0.35  # the width of the bars
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+# Plot 1: Comparative of warfarin dosage in diabetic and non-diabetic patients
+ax1.bar(x - width/2, means_diabetic, width, yerr=std_devs_diabetic, align='center', alpha=0.5, capsize=10, label='Diabetic patients')
+ax1.bar(x + width/2, means_non_diabetic, width, yerr=std_devs_non_diabetic, align='center', alpha=0.5, capsize=10, label='Diabetic without Statin', color='red')
+ax1.set_xticks(x)
+ax1.set_xticklabels(labels)
+ax1.set_ylabel('Mean(Sd)')
+ax1.set_title('Comparison in Diabetic Patients with Statin/ Not Statin')
+ax1.grid(True)
+ax1.legend()
+
+# Plot 2: Indication for Warfarin Treatment in Diabetic and Non-Diabetic Patients
+labels = ['1', '2', '3', '4', '5', '6', '7', '8']
+diabetic = [24, 12, 116, 11, 14, 25, 0, 62]
+non_diabetic = [22, 18, 119, 35, 5, 12, 0, 51]
+
+ax2.bar(np.arange(len(labels)) - width/2, diabetic, width, label='Diabetic with Statin')
+ax2.bar(np.arange(len(labels)) + width/2, non_diabetic, width, label='Diabetic without Statin', color='red')
+ax2.set_xlabel('Category')
+ax2.set_ylabel('Number of Patients')
+ax2.set_title('Indication for Warfarin Treatment in Diabetic Patients with Statin/ Not Statin')
+ax2.set_xticks(np.arange(len(labels)))
+ax2.set_xticklabels(labels)
+ax2.legend()
+
+plt.show()
+
+
+
+###################################333
+
+# figure 2
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Diabetic patients
+labels = ['INR on Reported Therapeutic','Warfarin dose, mg/week','Target INR']
+
+mean_Simvastatin = [2.5, 38.82, 2.53]
+std_Simvastatin = [0.32, 15.83, 0.13]
+
+mean_Atorvastatin = [2.5, 35.81, 2.56]
+std_Atorvastatin = [0.33, 13.99, 0.17]
+
+mean_Fluvastatin = [2.55, 40.34, 2.5]
+std_Fluvastatin = [0.6, 20.64, 0]
+
+mean_Lovastatin = [2.56, 40.92, 2.5]
+std_Lovastatin = [0.40, 10.86, 0]
+
+mean_Pravastatin = [2.4, 37.68, 2.5]
+std_Pravastatin = [0.31, 16.0, 0]
+
+mean_Rosuvastatin = [2.4, 34.37, 0]
+std_Rosuvastatin = [0.71, 11.18, 0]
+
+x = np.arange(len(labels))  # the label locations
+width = 0.15  # the width of the bars
+
+# Create a figure with two subplots
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
+
+# Plot the first graph
+ax1.bar(x - 2.5*width, mean_Simvastatin, width, yerr=std_Simvastatin, label='Simvastatin')
+ax1.bar(x - 1.5*width, mean_Atorvastatin, width, yerr=std_Atorvastatin, label='Atorvastatin')
+ax1.bar(x - 0.5*width, mean_Fluvastatin, width, yerr=std_Fluvastatin, label='Fluvastatin')
+ax1.bar(x + 0.5*width, mean_Lovastatin, width, yerr=std_Lovastatin, label='Lovastatin')
+ax1.bar(x + 1.5*width, mean_Pravastatin, width, yerr=std_Pravastatin, label='Pravastatin')
+ax1.bar(x + 2.5*width, mean_Rosuvastatin, width, yerr=std_Rosuvastatin, label='Rosuvastatin')
+ax1.set_ylabel('Mean (SD)')
+ax1.set_title('Comparison of Statin Medications in Diabetic Patients')
+ax1.set_xticks(x)
+ax1.set_xticklabels(labels)
+ax1.legend()
+
+# Plot the second graph
+labels = ['1', '2', '3', '4', '5', '6', '7', '8']
+Simvastatin = [19, 11, 74, 10, 9, 16, 0, 26]
+Atorvastatin = [6, 5, 27, 2, 4, 5, 0, 24]
+Fluvastatin = [0, 0, 1, 1, 1, 0, 0, 2]
+Lovastatin = [1, 0, 5, 0, 1, 3, 0, 2]
+Pravastatin = [1, 1, 21, 0, 2, 1, 0, 11]
+Rosuvastatin = [0, 0, 0, 0, 0, 1, 0, 1]
+
+x = np.arange(len(labels))
+width = 0.1
+
+ax2.bar(x - 2.5*width, Simvastatin, width, label='Simvastatin')
+ax2.bar(x - 1.5*width, Atorvastatin, width, label='Atorvastatin')
+ax2.bar(x - 0.5*width, Fluvastatin, width, label='Fluvastatin')
+ax2.bar(x + 0.5*width, Lovastatin, width, label='Lovastatin')
+ax2.bar(x + 1.5*width, Pravastatin, width, label='Pravastatin')
+ax2.bar(x + 2.5*width, Rosuvastatin, width, label='Rosuvastatin')
+ax2.set_xlabel('Indication for Warfarin Treatment')
+ax2.set_ylabel('Therapeutic Dose of Warfarin')
+ax2.set_title('Diabetic Patients')
+ax2.set_xticks(x)
+ax2.set_xticklabels(labels)
+ax2.legend()
+
+fig.tight_layout()
+plt.show()
